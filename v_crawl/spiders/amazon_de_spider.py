@@ -4,32 +4,27 @@ import time
 from scrapy.exceptions import CloseSpider
 
 
-class AmazonSpider(scrapy.Spider):
-    name = "v_crawler"
-    spider_timeout = 10
+class AmazonDeSpider(scrapy.Spider):
+    name = "v_crawler_de"
+    spider_timeout = 60
     spider_start_time = 0
 
-    movie_counter = 0
     movies_crawled = set()
-    base_url = 'https://www.amazon.com/gp/video/detail/'
+    base_url = 'https://www.amazon.de/gp/video/detail/'
 
     def start_requests(self):
         self.spider_start_time = time.time()
 
         # Starting URLs for the spider
         seed_urls = [
-            self.base_url + 'B0748PJSBJ/',  # Valerian
-            self.base_url + 'B000Q76K1A/',  # The Bourne Identity
-            self.base_url + 'B078X1RBH5/',  # After the Rain
-            self.base_url + 'B07GFS578F/',  # Destination Wedding
-            self.base_url + 'B07FDKRJQC/',  # The Man In the High Castle
-            self.base_url + 'B006F437YG/',  # Criminal Minds
-            self.base_url + 'B00YBX664Q/',  # Mr. Robot
-            self.base_url + 'B0786YMWXR/',  # Wonder
-            self.base_url + 'B076TKGFYB/',  # Jigsaw
-            self.base_url + 'B000HJ4WLC/',  # SpongeBob SquarePants
-            self.base_url + 'B07HLZLJN5/',  # Kung Fu Panda: The Paws of Destiny
-            self.base_url + 'B07JD5Q9WQ/',  # Whitney
+            self.base_url + 'B00IB1IFL6/',  # Criminal Minds
+            self.base_url + 'B00JGV1MY2/',  # Harry Potter 1
+            self.base_url + 'B00ET11KUU/',  # The Big Bang Theory
+            self.base_url + 'B07HFK1TPS/',  # American Dad
+            self.base_url + 'B00I9MWJRS/',  # Die Bourne Identität
+            self.base_url + 'B078WZ4LHL/',  # After the Rain
+            self.base_url + 'B019ZS6XU8/',  # Die Pinguine aus Madagascar
+            self.base_url + 'B01BNU0D5M/',  # Unser Kosmos
         ]
 
         # Make a Request for each URL in seed_urls
@@ -55,8 +50,6 @@ class AmazonSpider(scrapy.Spider):
         year = self.extract_year(meta_selector)
         fsk = self.extract_fsk(meta_selector)
 
-        self.movie_counter += 1
-
         # Return the information (in a generator manner) to add them to the output
         yield {
             'id': movie_id,
@@ -75,7 +68,7 @@ class AmazonSpider(scrapy.Spider):
         # For each movie/series in the recommendation list get url and movie_ids of the next movies/series
         for recommendation in recom_selector.css('a[href*="/gp/video/detail/"]'):
             url = recommendation.css('a[href*="/gp/video/detail/"]::attr(href)').extract_first()
-            url = str(url)[22:50]
+            url = str(url)[21:50]
             movie_id = url[17:27]
 
             # If the movie_id is already in the list then don't add it again and look at the next entry
@@ -91,10 +84,7 @@ class AmazonSpider(scrapy.Spider):
             yield scrapy.Request(next_page, callback=self.parse)
 
             if self.should_timeout():
-                self.log("Total movies crawled: %s" % self.movie_counter)
-                self.log("Ratio: %s" % (self.movie_counter / len(self.movies_crawled)))
-
-                raise CloseSpider("Timeout of %s reached" % self.spider_timeout)
+                raise CloseSpider("Timeout of %s seconds reached" % self.spider_timeout)
 
         return
 
