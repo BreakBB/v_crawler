@@ -1,43 +1,67 @@
+import json
+import logging
+import random
 import re
-import scrapy
+from pathlib import Path
+
 import time
+from decimal import Decimal  # Decimal is required for dynamoDB
+
+import scrapy
 from scrapy.exceptions import CloseSpider
+
+from v_crawl.database import Database
+from v_crawl.pipelines import JsonLinesExportPipeline
 
 
 class AmazonDeSpider(scrapy.Spider):
     name = "v_crawler_de"
     spider_timeout = 60
     spider_start_time = 0
+    seed_urls = []
+    db_conn = None
 
     movies_crawled = set()
     base_url = 'https://www.amazon.de/gp/video/detail/'
 
+    def __init__(self):
+        # Make sure to get the random seeds before anything else happens
+        self.seed_urls = self.get_random_seeds()
+
+        # Increase logging level of some annoying loggers
+        logging.getLogger("botocore").setLevel(logging.WARNING)
+        logging.getLogger("urllib3.util.retry").setLevel(logging.WARNING)
+        logging.getLogger("urllib3.connectionpool").setLevel(logging.WARNING)
+
+        super().__init__()
+        return
+
     def start_requests(self):
         self.spider_start_time = time.time()
 
-        # Starting URLs for the spider
-        seed_urls = [
-            self.base_url + 'B00IB1IFL6/',  # Criminal Minds
-            self.base_url + 'B00JGV1MY2/',  # Harry Potter 1
-            self.base_url + 'B00ET11KUU/',  # The Big Bang Theory
-            self.base_url + 'B07HFK1TPS/',  # American Dad
-            self.base_url + 'B00I9MWJRS/',  # Die Bourne Identität
-            self.base_url + 'B078WZ4LHL/',  # After the Rain
-            self.base_url + 'B019ZS6XU8/',  # Die Pinguine aus Madagascar
-            self.base_url + 'B01BNU0D5M/',  # Unser Kosmos
-        ]
+        # Create a connection to the database
+        self.db_conn = Database("amazon_video_de")
+
+        # If this is the first run (so no seed_urls could be read from
+        if len(self.seed_urls) == 0:
+            # Starting URLs for the spider
+            self.seed_urls = [
+                self.base_url + 'B00IB1IFL6/',  # Criminal Minds
+                self.base_url + 'B00JGV1MY2/',  # Harry Potter 1
+                self.base_url + 'B00ET11KUU/',  # The Big Bang Theory
+                self.base_url + 'B07HFK1TPS/',  # American Dad
+                self.base_url + 'B00I9MWJRS/',  # Die Bourne Identität
+                self.base_url + 'B078WZ4LHL/',  # After the Rain
+                self.base_url + 'B019ZS6XU8/',  # Die Pinguine aus Madagascar
+                self.base_url + 'B01BNU0D5M/',  # Unser Kosmos
+            ]
 
         # Make a Request for each URL in seed_urls
-        for url in seed_urls:
+        for url in self.seed_urls:
             yield scrapy.Request(url=url, callback=self.parse)
         return
 
     def parse(self, response):
-
-        # file = open("data/body.html", "wb")
-        # file.write(response.body)
-        # file.close()
-
         movie_id = response.url[-11:-1]
         url = self.base_url + movie_id + '/'
 
@@ -50,9 +74,9 @@ class AmazonDeSpider(scrapy.Spider):
         year = self.extract_year(meta_selector)
         fsk = self.extract_fsk(meta_selector)
 
-        # Return the information (in a generator manner) to add them to the output
-        yield {
-            'id': movie_id,
+        # Create an object for the information
+        movie_item = {
+            'movie_id': movie_id,
             'url': url,
             'title': title,
             'rating': rating,
@@ -61,6 +85,15 @@ class AmazonDeSpider(scrapy.Spider):
             'year': year,
             'fsk': fsk
         }
+
+        # Add the found movie/series to the database
+        self.db_conn.put_item(movie_item)
+
+        movie_item['rating'] = float(movie_item['rating'])
+        movie_item['imdb'] = float(movie_item['imdb'])
+
+        # Return the information (in a generator manner) to add them to the output
+        yield movie_item
 
         # Get the recommendation list of the current site
         recom_selector = response.css('div[class*="a-section"]')
@@ -95,34 +128,49 @@ class AmazonDeSpider(scrapy.Spider):
         for genre in genre_selector.css('a[href*="Cp_n_theme_browse-bin"]::text').extract():
             genre_list.append(genre)
 
+        if len(genre_list) == 0:
+            genre_list.append("None")
+
         return genre_list
 
     def extract_fsk(self, meta_selector):
         fsk_string = meta_selector.css('span[data-automation-id="maturity-rating-badge"]::attr(title)').extract_first()
-        fsk = ""
+        fsk = 0
 
         # Get the actual value out of the string
         if fsk_string:
             fsk_match = re.search(r'\d\d?', fsk_string)
             if fsk_match:
-                fsk = fsk_match.group(0)
+                fsk = int(fsk_match.group(0))
 
         return fsk
 
     def extract_rating(self, meta_selector):
         rating = meta_selector.css('span[class*="av-stars"]').re_first(r'\d-?\d?')
-        if (rating is not None) and ('-' in rating):
-            rating.replace('-', ',')
+        if rating is not None:
+            if '-' in rating:
+                rating = rating.replace('-', '.')
+            rating = Decimal(rating)
+        else:
+            rating = 0
         return rating
 
     def extract_year(self, meta_selector):
         year = meta_selector.css('span[data-automation-id="release-year-badge"]::text').extract_first()
+        if year is not None:
+            year = int(year)
+        else:
+            year = 0
         return year
 
     def extract_imdb(self, meta_selector):
         imdb = meta_selector.css('span[data-automation-id="imdb-rating-badge"]::text').extract_first()
-        if imdb is None:
-            imdb = ""
+        if imdb is not None:
+            if ',' in imdb:
+                imdb = imdb.replace(',', '.')
+            imdb = Decimal(imdb)
+        else:
+            imdb = 0
             # TODO: Call of imdb module
         return imdb
 
@@ -134,3 +182,18 @@ class AmazonDeSpider(scrapy.Spider):
         if time.time() - self.spider_start_time > self.spider_timeout:
             return True
         return False
+
+    def get_random_seeds(self):
+        item_file = Path(JsonLinesExportPipeline.data_path + self.name + ".jsonl")
+        seed_urls = []
+
+        if item_file.is_file():
+            with open(item_file, 'r') as data:
+                lines = data.read().splitlines()
+            if len(lines) != 0:
+                for i in range(0, 10):
+                    json_line = random.choice(lines)
+                    item = json.loads(json_line)
+                    seed_urls.append(item['url'])
+
+        return seed_urls
