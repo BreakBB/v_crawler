@@ -11,6 +11,7 @@ import scrapy
 from scrapy.exceptions import CloseSpider
 
 from v_crawl.database import Database
+from v_crawl.network import Network
 from v_crawl.pipelines import JsonLinesExportPipeline
 
 
@@ -19,11 +20,12 @@ class AmazonSpider(scrapy.Spider):
     table_name = ""  # The name of the dynamodb table
     base_url = ""  # The base_url to crawl
 
-    spider_timeout = 300
+    spider_timeout = 600
     spider_start_time = 0
     seed_urls = []
     movies_crawled = set()
     db_conn = None
+    network = None
 
     def __init__(self):
         if self.name == "":
@@ -33,6 +35,12 @@ class AmazonSpider(scrapy.Spider):
         if self.base_url == "":
             raise Exception("'base_url' must not be empty")
 
+        # Create a connection to the database
+        self.db_conn = Database(self.table_name)
+
+        # Create a network
+        self.network = Network()
+
         # Make sure to get the random seeds before anything else happens
         self.seed_urls = self.get_random_seeds()
 
@@ -40,15 +48,13 @@ class AmazonSpider(scrapy.Spider):
         logging.getLogger("botocore").setLevel(logging.WARNING)
         logging.getLogger("urllib3.util.retry").setLevel(logging.WARNING)
         logging.getLogger("urllib3.connectionpool").setLevel(logging.WARNING)
+        logging.getLogger("scrapy.core.engine").setLevel(logging.WARNING)
 
         super().__init__()
         return
 
     def start_requests(self):
         self.spider_start_time = time.time()
-
-        # Create a connection to the database
-        self.db_conn = Database(self.table_name)
 
         # If this is the first run (so no seed_urls could be read from
         if len(self.seed_urls) == 0:
@@ -76,7 +82,7 @@ class AmazonSpider(scrapy.Spider):
         # Extract all relevant information
         title = self.extract_title(meta_selector)
         rating = self.extract_rating(meta_selector)
-        imdb = self.extract_imdb(meta_selector)
+        imdb = self.extract_imdb(meta_selector, title)
         genres = self.extract_genres(meta_selector)
         year = self.extract_year(meta_selector)
         fsk = self.extract_fsk(meta_selector)
@@ -185,15 +191,16 @@ class AmazonSpider(scrapy.Spider):
             year = 0
         return year
 
-    def extract_imdb(self, meta_selector):
+    def extract_imdb(self, meta_selector, title):
         imdb = meta_selector.css('span[data-automation-id="imdb-rating-badge"]::text').extract_first()
         if imdb is not None:
             if ',' in imdb:
                 imdb = imdb.replace(',', '.')
             imdb = Decimal(imdb)
         else:
-            imdb = 0
+            imdb = self.network.get_imdb_rating(title)
             # TODO: Call of imdb module
+
         return imdb
 
     def extract_title(self, meta_selector):

@@ -1,39 +1,28 @@
 import logging
 import random
-from time import sleep
 
-import stem
-from stem import Signal
-from stem.control import Controller
 from scrapy.utils.project import get_project_settings
 
-
-def renew_ip():
-    print("Getting new Tor IP")
-    with Controller.from_port(port=9151) as controller:
-        controller.authenticate()
-        try:
-            controller.signal(Signal.NEWNYM)
-        except stem.ControllerError:
-            print("Sending the controller request for a new IP failed")
-    sleep(0.5)
-    return
-
+from v_crawl.network import Network
 
 tries = 30
 
 
 class ProxyMiddleware(object):
 
+    network = None
+
     def __init__(self):
         super().__init__()
         logging.getLogger("stem").setLevel(logging.WARNING)
+
+        self.network = Network()
         return
 
     def process_request(self, request, spider):
         global tries
         if tries == 0:
-            renew_ip()
+            self.network.renew_ip()
             tries = 30
         tries -= 1
         request.meta['proxy'] = 'http://127.0.0.1:8118'
@@ -65,7 +54,10 @@ class UserAgentMiddleware(object):
         return
 
     def process_request(self, request, spider):
-        user_agent = random.choice(self.user_agent_list)
+        user_agent = self.get_random_user_agent()
         if user_agent:
             request.headers.setdefault('User-Agent', user_agent)
         return
+
+    def get_random_user_agent(self):
+        return random.choice(self.user_agent_list)
