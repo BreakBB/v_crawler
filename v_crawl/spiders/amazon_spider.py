@@ -5,7 +5,6 @@ import re
 from pathlib import Path
 
 import time
-from decimal import Decimal  # Decimal is required for dynamoDB
 
 import scrapy
 from scrapy.exceptions import CloseSpider
@@ -17,7 +16,7 @@ from v_crawl.pipelines import JsonLinesExportPipeline
 
 class AmazonSpider(scrapy.Spider):
     name = ""  # The name of the spider
-    table_name = ""  # The name of the dynamodb table
+    table_name = ""  # The name of the database table
     base_url = ""  # The base_url to crawl
 
     spider_timeout = 600
@@ -104,7 +103,7 @@ class AmazonSpider(scrapy.Spider):
         }
 
         # Add the found movie/series to the database
-        self.db_conn.put_item(movie_item)
+        self.db_conn.insert_item(movie_item)
 
         # Cast Decimal back to float to be serializable for json
         movie_item['rating'] = float(movie_item['rating'])
@@ -163,6 +162,10 @@ class AmazonSpider(scrapy.Spider):
 
     def extract_fsk(self, meta_selector):
         fsk_string = meta_selector.css('span[data-automation-id="maturity-rating-badge"]::attr(title)').extract_first()
+
+        if fsk_string is None:
+            fsk_string = meta_selector.css('span[class*="RegulatoryRatingIcon"]::attr(title)').extract_first()
+
         fsk = 0
 
         # Get the actual value out of the string
@@ -178,7 +181,7 @@ class AmazonSpider(scrapy.Spider):
         if rating is not None:
             if '-' in rating:
                 rating = rating.replace('-', '.')
-            rating = Decimal(rating)
+            rating = float(rating)
         else:
             rating = 0
         return rating
@@ -196,10 +199,9 @@ class AmazonSpider(scrapy.Spider):
         if imdb is not None:
             if ',' in imdb:
                 imdb = imdb.replace(',', '.')
-            imdb = Decimal(imdb)
+            imdb = float(imdb)
         else:
             imdb = self.network.get_imdb_rating(title)
-            # TODO: Call of imdb module
 
         return imdb
 

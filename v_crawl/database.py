@@ -1,37 +1,53 @@
-import boto3
+from configparser import ConfigParser
+import psycopg2
 
 
 class Database:
-    dynamo_db = None
-    table = None
+    table_name = ""
+    conn = None
+    cursor = None
 
-    def __init__(self, table):
-        self.dynamo_db = boto3.client("dynamodb")
-        self.table = table
+    def __init__(self, table_name):
+        self.table_name = table_name
+        db_settings = {}
+        section = "postgresql"
+        filename = "database.ini"
+
+        parser = ConfigParser()
+        parser.read(filename)
+
+        if parser.has_section(section):
+            params = parser.items(section)
+            for param in params:
+                db_settings[param[0]] = param[1]
+        else:
+            raise Exception("Section {0} not found in the {1} file".format(section, filename))
+
+        print("Connecting to database")
+        self.conn = psycopg2.connect(
+            host=db_settings['host'],
+            port=db_settings['port'],
+            database=db_settings['dbname'],
+            user=db_settings['user'],
+            password=db_settings['password']
+        )
+        self.cursor = self.conn.cursor()
+
         return
 
-    def put_item(self, movie_item):
+    def insert_item(self, movie_item):
+        query_string = "INSERT INTO %s (movie_id, url, title, rating, imdb, genres, year, fsk)" \
+                       "VALUES (" \
+                       "%%(movie_id)s, %%(url)s, %%(title)s, %%(rating)s, %%(imdb)s, %%(genres)s, %%(year)s, %%(fsk)s" \
+                       ") ON CONFLICT DO NOTHING;" % self.table_name
         try:
-            response = self.dynamo_db.put_item(
-                TableName=self.table,
-                Item={
-                    'movie_id': {"S": movie_item['movie_id']},
-                    'url': {"S": movie_item['url']},
-                    'title': {"S": movie_item['title']},
-                    'rating': {"N": str(movie_item['rating'])},
-                    'imdb': {"N": str(movie_item['imdb'])},
-                    'genres': {"SS": movie_item['genres']},
-                    'year': {"N": str(movie_item['year'])},
-                    'fsk': {"N": str(movie_item['fsk'])}
-                },
-                ConditionExpression="movie_id <> :movie_id_value",
-                ExpressionAttributeValues={
-                    ":movie_id_value": {"S": movie_item['movie_id']}
-                }
-            )
-        except self.dynamo_db.exceptions.ConditionalCheckFailedException:
-            print("put_item failed because item is already in DB")
+            self.cursor.execute(query_string, movie_item)
+        except psycopg2.Error as e:
+            print(e.pgerror)
+            self.conn.rollback()
+            print("Didn't add item due to database error")
             return
 
+        self.conn.commit()
         print("Successfully added new item to DB")
         return

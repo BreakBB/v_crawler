@@ -20,14 +20,34 @@ It is using the [Scrapy Framework](https://github.com/scrapy/scrapy) and extract
 1. Install the TOR browser and have it running
 2. If you want to make use of the TOR service you have to skip step 2 of Privoxy and change the ports inside the code to 9050.
 
-### AWS DynamoDB
+### PostgreSQL
 
-1. Create the DynamoDB tables<br>
-    a. name them "amazon_video_de" and "amazon_video_com" with "movie_id" as primary key of type string.<br>
-    b. if you want to name them differently you have to set those names in the code
-2. Make sure to have your AWS credentials stored under
+1. Create a "database.ini" file with the following schema:
 
-    ```C:\Users\<UserName>\.aws``` or ```~/.aws```
+    ```ini
+    [postgresql]
+    host=<yourHost>
+    port=<yourPort>
+    dbname=<yourDbName>
+    user=<yourUser>
+    password=<yourPassword>
+    ```
+    
+2. Create a table using the following specs:
+
+    ```SQL
+    CREATE TABLE amazon_video_de
+    (
+    movie_id VARCHAR(10) not null primary key,
+    url VARCHAR(255) not null,
+    title VARCHAR(255) not null,
+    rating FLOAT,
+    imdb FLOAT,
+    genres VARCHAR(255),
+    year NUMERIC,
+    fsk NUMERIC
+    )
+    ```
     
 ### Python dependencies
 
