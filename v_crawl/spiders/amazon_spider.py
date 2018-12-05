@@ -19,7 +19,7 @@ class AmazonSpider(scrapy.Spider):
     table_name = ""  # The name of the database table
     base_url = ""  # The base_url to crawl
 
-    spider_timeout = 600
+    spider_timeout = 120
     spider_start_time = 0
     seed_urls = []
     movies_crawled = set()

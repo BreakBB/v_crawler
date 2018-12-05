@@ -39,13 +39,18 @@ class Database:
         query_string = "INSERT INTO %s (movie_id, url, title, rating, imdb, genres, year, fsk)" \
                        "VALUES (" \
                        "%%(movie_id)s, %%(url)s, %%(title)s, %%(rating)s, %%(imdb)s, %%(genres)s, %%(year)s, %%(fsk)s" \
-                       ") ON CONFLICT DO NOTHING;" % self.table_name
+                       ") ON CONFLICT DO NOTHING RETURNING movie_id;" % self.table_name
         try:
             self.cursor.execute(query_string, movie_item)
         except psycopg2.Error as e:
             print(e.pgerror)
             self.conn.rollback()
-            print("Didn't add item due to database error")
+            return
+
+        result = self.cursor.fetchone()
+
+        if result is None:
+            print("Didn't add item to DB")
             return
 
         self.conn.commit()
