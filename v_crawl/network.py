@@ -38,9 +38,9 @@ class Network:
         if '(Subbed)' in title:
             title = title.replace('(Subbed)', '')
 
-        # TODO: Check for umlaut since those movies aren't covered in the IMDB module atm
+        # TODO: Check for umlaut since those movies aren't covered in the IMDb module atm
 
-        response = self.session.post("http://localhost:8555/api/imdb", json={"title": title})
+        response = self.session.post("http://localhost:8555/api/rating", json={"title": title})
 
         result = json.loads(response.text)
 

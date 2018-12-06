@@ -49,6 +49,12 @@ It is using the [Scrapy Framework](https://github.com/scrapy/scrapy) and extract
     )
     ```
     
+### IMDb API server
+
+1. Install my [imdb-api-server](https://github.com/BreakBB/imdb-api-server)
+2. By default this runs on localhost:8555
+    
+    
 ### Python dependencies
 
 1. Install the python dependencies using the **requirements.txt**
