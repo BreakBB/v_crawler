@@ -19,6 +19,8 @@ class Network:
         with Controller.from_port(port=9151) as controller:
             controller.authenticate()
             try:
+                while not controller.is_newnym_available():
+                    sleep(0.5)
                 controller.signal(Signal.NEWNYM)
             except stem.ControllerError:
                 print("Sending the controller request for a new IP failed")

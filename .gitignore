@@ -3,3 +3,4 @@
 **/.pyc
 v_crawl/data
 venv/
+**/*.ini

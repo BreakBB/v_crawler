@@ -1,16 +1,17 @@
 import logging
 import random
+from multiprocessing import Value, Lock
 
 from scrapy.utils.project import get_project_settings
 
 from v_crawl.network import Network
 
-tries = 30
-
 
 class ProxyMiddleware(object):
 
     network = None
+    lock = Lock()
+    tries = Value('i', 30)
 
     def __init__(self):
         super().__init__()
@@ -20,11 +21,13 @@ class ProxyMiddleware(object):
         return
 
     def process_request(self, request, spider):
-        global tries
-        if tries == 0:
+        tries = self.tries
+        self.lock.acquire()  # Only one thread should enter renew_ip()
+        if tries.value == 0:
             self.network.renew_ip()
-            tries = 30
-        tries -= 1
+            tries.value = 30
+        tries.value -= 1
+        self.lock.release()
         request.meta['proxy'] = 'http://127.0.0.1:8118'
         return
 
