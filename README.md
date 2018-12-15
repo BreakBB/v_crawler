@@ -43,7 +43,7 @@ It is using the [Scrapy Framework](https://github.com/scrapy/scrapy) and extract
     title VARCHAR(255) not null,
     rating FLOAT,
     imdb FLOAT,
-    genres VARCHAR(255),
+    genres VARCHAR[],
     year NUMERIC,
     fsk NUMERIC
     )

@@ -25,6 +25,10 @@ class AmazonSpider(scrapy.Spider):
     movies_crawled = set()
     db_conn = None
     network = None
+    user_agent = ""
+
+    def set_user_agent(self, agent):
+        self.user_agent = agent
 
     def __init__(self):
         if self.name == "":
@@ -79,10 +83,15 @@ class AmazonSpider(scrapy.Spider):
         meta_selector = response.css('section[class="av-detail-section"]')
 
         # Extract all relevant information
-        title = self.extract_title(meta_selector)
+        title = self.extract_title(meta_selector, response)
+
+        if title is None:
+            print("title is none. Couldn't extract title from HTML?")
+            return
+
         rating = self.extract_rating(meta_selector)
         imdb = self.extract_imdb(meta_selector, title)
-        genres = self.extract_genres(meta_selector)
+        genres = self.extract_genres(meta_selector, title)
         year = self.extract_year(meta_selector)
         fsk = self.extract_fsk(meta_selector)
 
@@ -148,12 +157,15 @@ class AmazonSpider(scrapy.Spider):
 
         return
 
-    def extract_genres(self, meta_selector):
+    def extract_genres(self, meta_selector, title):
         genre_selector = meta_selector.css('div[data-automation-id="meta-info"]')
 
         genre_list = []
         for genre in genre_selector.css('a[href*="Cp_n_theme_browse-bin"]::text').extract():
             genre_list.append(genre)
+
+        if len(genre_list) == 0:
+            genre_list = self.network.get_imdb_genres(title)
 
         if len(genre_list) == 0:
             genre_list.append("None")
@@ -205,12 +217,18 @@ class AmazonSpider(scrapy.Spider):
 
         return imdb
 
-    def extract_title(self, meta_selector):
+    def extract_title(self, meta_selector, response):
         title = meta_selector.css('h1[data-automation-id="title"]::text').extract_first()
 
         # Some movies/series have a different css attribute for the title
         if title is None:
             title = meta_selector.css('h1[class*="dv-node-dp-title"]::text').extract_first()
+
+        # Debugging purpose since some User-Agents might lead to problems loading the page
+        if title is None:
+            print("User-Agent is: " + self.user_agent)
+            with open('debug_title.html', 'wb') as file:
+                file.write(response.body)
 
         return title
 

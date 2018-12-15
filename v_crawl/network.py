@@ -26,6 +26,30 @@ class Network:
         return
 
     def get_imdb_rating(self, title):
+        title = self.filter_title(title)
+        response = self.session.post("http://localhost:8555/api/rating", json={"title": title})
+        result = json.loads(response.text)
+
+        if response.status_code == 200:
+            return result
+
+        print("Could not get imdb rating: %s" % result['message'])
+        return 0
+
+    def get_imdb_genres(self, title):
+        title = self.filter_title(title)
+        response = self.session.post("http://localhost:8555/api/genres", json={"title": title})
+        result = json.loads(response.text)
+
+        if response.status_code == 200:
+            return result
+
+        print("Could not get imdb genres: %s" % result['message'])
+        return []
+
+    def filter_title(self, title):
+        # TODO: Move this filtering to the spider since most are language specific
+        # TODO: Check for umlaut since those movies aren't covered in the IMDb module atm
 
         if '[dt./OV]' in title:
             title = title.replace('[dt./OV]', '')
@@ -37,15 +61,6 @@ class Network:
             title = title.replace('[OmU]', '')
         if '(Subbed)' in title:
             title = title.replace('(Subbed)', '')
-
-        # TODO: Check for umlaut since those movies aren't covered in the IMDb module atm
-
-        response = self.session.post("http://localhost:8555/api/rating", json={"title": title})
-
-        result = json.loads(response.text)
-
-        if response.status_code == 200:
-            return result
-
-        print("Could not get imdb rating: %s" % result['message'])
-        return 0
+        if '(inkl. Bonusmaterial)' in title:
+            title = title.replace('(inkl. Bonusmaterial)', '')
+        return title
