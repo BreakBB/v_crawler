@@ -38,14 +38,16 @@ It is using the [Scrapy Framework](https://github.com/scrapy/scrapy) and extract
     ```SQL
     CREATE TABLE amazon_video_de
     (
-    movie_id VARCHAR(10) not null primary key,
-    url VARCHAR(255) not null,
-    title VARCHAR(255) not null,
-    rating FLOAT,
-    imdb FLOAT,
-    genres VARCHAR[],
-    year NUMERIC,
-    fsk NUMERIC
+        movie_id VARCHAR(10) not null primary key,
+        url VARCHAR(255) not null,
+        title VARCHAR(255) not null,
+        rating FLOAT,
+        imdb FLOAT,
+        genres VARCHAR[],
+        year NUMERIC,
+        fsk NUMERIC,
+        movie_type varchar(255),
+        poster BYTEA
     )
     ```
     

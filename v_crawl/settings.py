@@ -14,13 +14,13 @@ ITEM_PIPELINES = {
     'v_crawl.pipelines.JsonLinesExportPipeline': 100,
 }
 
-USER_AGENT = 'Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 5.1)'
+USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; WOW64; rv:52.0) Gecko/20100101 Firefox/52.0'
 
 DOWNLOADER_MIDDLEWARES = {
     'v_crawl.middlewares.ProxyMiddleware': 100,
     'scrapy.downloadermiddlewares.httpproxy.HttpProxyMiddleware': 200,
     'v_crawl.middlewares.UserAgentMiddleware': 400,
-    'scrapy.downloadermiddlewares.useragent.UserAgentMIddleware': None
+    'scrapy.downloadermiddlewares.useragent.UserAgentMiddleware': None
 }
 
 USER_AGENT_LIST = "user_agents.txt"
@@ -29,3 +29,5 @@ USER_AGENT_LIST = "user_agents.txt"
 COOKIES_ENABLED = False
 
 FEED_FORMAT = 'json'
+
+IMAGE_DIR = "./data/images/"

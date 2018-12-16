@@ -2,12 +2,14 @@ import json
 import logging
 import random
 import re
+import os
 from pathlib import Path
 
 import time
 
 import scrapy
 from scrapy.exceptions import CloseSpider
+from scrapy.utils.project import get_project_settings
 
 from v_crawl.database import Database
 from v_crawl.network import Network
@@ -26,6 +28,8 @@ class AmazonSpider(scrapy.Spider):
     db_conn = None
     network = None
     user_agent = ""
+    imdb_data = None
+    image_dir = ""
 
     def set_user_agent(self, agent):
         self.user_agent = agent
@@ -40,6 +44,15 @@ class AmazonSpider(scrapy.Spider):
 
         # Create a connection to the database
         self.db_conn = Database(self.table_name)
+
+        settings = get_project_settings()
+        self.image_dir = settings.get('IMAGE_DIR')
+        if not self.image_dir:
+            self.image_dir = './images'
+
+        if not os.path.exists(self.image_dir):
+            print("Image directory not found. Creating directory: '" + self.image_dir + "'")
+            os.makedirs(self.image_dir)
 
         # Create a network
         self.network = Network()
@@ -80,35 +93,62 @@ class AmazonSpider(scrapy.Spider):
         movie_id = response.url[-11:-1]
         url = self.base_url + movie_id + '/'
 
-        meta_selector = response.css('section[class="av-detail-section"]')
+        # We only want to parse the recommendations since we get a poster from there
+        if url not in self.seed_urls:
+            # Parse the current website
+            meta_selector = response.css('section[class="av-detail-section"]')
+            movie_item = self.parse_current_site(meta_selector, url, movie_id)
+            if movie_item is not None:
+                yield movie_item
+        else:
+            self.seed_urls.remove(url)
 
-        # Extract all relevant information
-        title = self.extract_title(meta_selector, response)
+        # Get the recommendation list of the current site
+        recom_selector = response.css('div[class*="a-section"]')
+
+        # For each movie/series in the recommendation list get url and movie_ids of the next movies/series
+        for recommendation in recom_selector.css('a[href*="/gp/video/detail/"]'):
+            request = self.parse_recommendations(recommendation)
+            if request is not None:
+                yield request
+
+        self.extract_fsk(recom_selector)
+
+        return
+
+    def parse_current_site(self, meta_selector, url, movie_id):
+        title = self.extract_title(meta_selector)
 
         if title is None:
             print("title is none. Couldn't extract title from HTML?")
-            return
+            return None
+
+        self.imdb_data = self.network.get_imdb_data(title)
 
         rating = self.extract_rating(meta_selector)
-        imdb = self.extract_imdb(meta_selector, title)
-        genres = self.extract_genres(meta_selector, title)
+        imdb = self.extract_imdb_rating(meta_selector)
+        genres = self.extract_genres(meta_selector)
         year = self.extract_year(meta_selector)
         fsk = self.extract_fsk(meta_selector)
+        movie_type = self.extract_movie_type()
 
-        # This is most likely the case if the response was 200 but the page information weren't loaded
-        if (title is None) or (rating is None) or (imdb is None) or (genres is None) or (year is None) or (fsk is None):
-            return
+        poster_path = self.image_dir + movie_id + '.jpg'
+        # The poster might be added earlier from the recommendations
+        if not os.path.exists(poster_path) and self.imdb_data is not None:
+            poster_path = self.network.get_movie_poster(movie_id, self.imdb_data['poster'], self.image_dir)
 
         # Create an object for the information
         movie_item = {
             'movie_id': movie_id,
             'url': url,
             'title': title,
+            'movie_type': movie_type,
             'rating': rating,
             'imdb': imdb,
             'genres': genres,
             'year': year,
-            'fsk': fsk
+            'fsk': fsk,
+            'poster': poster_path
         }
 
         # Add the found movie/series to the database
@@ -117,47 +157,49 @@ class AmazonSpider(scrapy.Spider):
         # Cast Decimal back to float to be serializable for json
         movie_item['rating'] = float(movie_item['rating'])
         movie_item['imdb'] = float(movie_item['imdb'])
+        movie_item['poster'] = poster_path
+
+        # Keep the directory clean
+        if os.path.exists(poster_path):
+            os.remove(poster_path)
 
         # Return the information (in a generator manner) to add them to the output
-        yield movie_item
+        return movie_item
 
-        # Get the recommendation list of the current site
-        recom_selector = response.css('div[class*="a-section"]')
+    def parse_recommendations(self, recommendation):
+        if self.should_timeout():
+            raise CloseSpider("Timeout of %s seconds reached" % self.spider_timeout)
 
-        # For each movie/series in the recommendation list get url and movie_ids of the next movies/series
-        for recommendation in recom_selector.css('a[href*="/gp/video/detail/"]'):
-            url = recommendation.css('a[href*="/gp/video/detail/"]::attr(href)').extract_first()
+        url = recommendation.css('a[href*="/gp/video/detail/"]::attr(href)').extract_first()
 
-            # Some URLs are relative so the base_url needs to be added
-            if str(url).startswith("/"):
-                url = self.base_url[:-17] + url
+        # Some URLs are relative so the base_url needs to be added
+        if str(url).startswith("/"):
+            url = self.base_url[:-17] + url
 
-            # Get the URL ending (.de / .com / ...)
-            url_ending = str(url).split(".")[2][:3]
-            if "/" in url_ending:
-                url = str(url)[21:50]
-            else:
-                url = str(url)[22:50]
-            movie_id = url[17:27]
+        # Get the URL ending (.de / .com / ...)
+        url_ending = str(url).split(".")[2][:3]
+        if "/" in url_ending:
+            url = str(url)[21:50]
+        else:
+            url = str(url)[22:50]
+        movie_id = url[17:27]
 
-            # If the movie_id is already in the list then don't add it again and look at the next entry
-            if movie_id in self.movies_crawled:
-                # self.log("Found duplicated movie_id %s" % movie_id)
-                continue
+        # If the movie_id is already in the list then don't add it again and look at the next entry
+        if movie_id in self.movies_crawled:
+            # self.log("Found duplicated movie_id %s" % movie_id)
+            return None
 
-            # Store the movie_id in a set
-            self.movies_crawled.add(movie_id)
+        # Store the movie_id in a set
+        self.movies_crawled.add(movie_id)
 
-            # Build the next_page to visit using the found movie_id and yield the request
-            next_page = self.base_url + movie_id + '/'
-            yield scrapy.Request(next_page, callback=self.parse)
+        # Get the recommendation poster
+        self.extract_poster(recommendation, movie_id)
 
-            if self.should_timeout():
-                raise CloseSpider("Timeout of %s seconds reached" % self.spider_timeout)
+        # Build the next_page to visit using the found movie_id and yield the request
+        next_page = self.base_url + movie_id + '/'
+        return scrapy.Request(next_page, callback=self.parse)
 
-        return
-
-    def extract_genres(self, meta_selector, title):
+    def extract_genres(self, meta_selector):
         genre_selector = meta_selector.css('div[data-automation-id="meta-info"]')
 
         genre_list = []
@@ -165,10 +207,10 @@ class AmazonSpider(scrapy.Spider):
             genre_list.append(genre)
 
         if len(genre_list) == 0:
-            genre_list = self.network.get_imdb_genres(title)
-
-        if len(genre_list) == 0:
-            genre_list.append("None")
+            if self.imdb_data is not None:
+                genre_list = self.imdb_data['genres'].split(',')
+            else:
+                genre_list.append("None")
 
         return genre_list
 
@@ -203,34 +245,49 @@ class AmazonSpider(scrapy.Spider):
         if year is not None:
             year = int(year)
         else:
-            year = 0
+            if self.imdb_data is not None:
+                year = self.imdb_data['year']
+            else:
+                year = 0
         return year
 
-    def extract_imdb(self, meta_selector, title):
+    def extract_imdb_rating(self, meta_selector):
         imdb = meta_selector.css('span[data-automation-id="imdb-rating-badge"]::text').extract_first()
         if imdb is not None:
             if ',' in imdb:
                 imdb = imdb.replace(',', '.')
             imdb = float(imdb)
         else:
-            imdb = self.network.get_imdb_rating(title)
+            if self.imdb_data is not None:
+                imdb = self.imdb_data['rating']
+            else:
+                imdb = 0
 
         return imdb
 
-    def extract_title(self, meta_selector, response):
+    def extract_title(self, meta_selector):
         title = meta_selector.css('h1[data-automation-id="title"]::text').extract_first()
 
         # Some movies/series have a different css attribute for the title
         if title is None:
             title = meta_selector.css('h1[class*="dv-node-dp-title"]::text').extract_first()
 
-        # Debugging purpose since some User-Agents might lead to problems loading the page
-        if title is None:
-            print("User-Agent is: " + self.user_agent)
-            with open('debug_title.html', 'wb') as file:
-                file.write(response.body)
+        if title is not None:
+            title = self.filter_title(title)
 
         return title
+
+    def extract_poster(self, meta_selector, movie_id):
+        poster_url = meta_selector.css('img[class*="a-dynamic-image"]::attr(src)').extract_first()
+
+        if poster_url is not None:
+            self.network.get_movie_poster(movie_id, poster_url, self.image_dir)
+
+    def extract_movie_type(self):
+        if self.imdb_data is not None:
+            return self.imdb_data['type']
+
+        return ""
 
     def should_timeout(self):
         if time.time() - self.spider_start_time > self.spider_timeout:
@@ -251,3 +308,6 @@ class AmazonSpider(scrapy.Spider):
                     seed_urls.append(item['url'])
 
         return seed_urls
+
+    def filter_title(self, title):
+        return title

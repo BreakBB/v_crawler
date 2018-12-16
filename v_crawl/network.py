@@ -1,4 +1,6 @@
 import json
+import shutil
+
 import requests
 from time import sleep
 
@@ -27,42 +29,28 @@ class Network:
         sleep(0.5)
         return
 
-    def get_imdb_rating(self, title):
-        title = self.filter_title(title)
-        response = self.session.post("http://localhost:8555/api/rating", json={"title": title})
+    def get_imdb_data(self, title):
+        response = self.session.post("http://localhost:8555/api/imdb", json={"title": title})
         result = json.loads(response.text)
 
         if response.status_code == 200:
             return result
 
-        print("Could not get imdb rating: %s" % result['message'])
-        return 0
+        print("Could not get imdb data: %s" % result['message'])
+        return None
 
-    def get_imdb_genres(self, title):
-        title = self.filter_title(title)
-        response = self.session.post("http://localhost:8555/api/genres", json={"title": title})
-        result = json.loads(response.text)
+    def get_movie_poster(self, movie_id, poster_url, image_dir):
+        file_path = "NULL"
+
+        # No poster for this movie
+        if poster_url == "N/A":
+            return file_path
+
+        response = self.session.get(poster_url, stream=True)
 
         if response.status_code == 200:
-            return result
-
-        print("Could not get imdb genres: %s" % result['message'])
-        return []
-
-    def filter_title(self, title):
-        # TODO: Move this filtering to the spider since most are language specific
-        # TODO: Check for umlaut since those movies aren't covered in the IMDb module atm
-
-        if '[dt./OV]' in title:
-            title = title.replace('[dt./OV]', '')
-        elif '[OV/OmU]' in title:
-            title = title.replace('[OV/OmU]', '')
-        elif '[OV]' in title:
-            title = title.replace('[OV]', '')
-        elif '[OmU]' in title:
-            title = title.replace('[OmU]', '')
-        if '(Subbed)' in title:
-            title = title.replace('(Subbed)', '')
-        if '(inkl. Bonusmaterial)' in title:
-            title = title.replace('(inkl. Bonusmaterial)', '')
-        return title
+            file_path = image_dir + movie_id + '.jpg'
+            with open(file_path, 'wb') as file:
+                response.raw.decode_content = True
+                shutil.copyfileobj(response.raw, file)
+        return file_path

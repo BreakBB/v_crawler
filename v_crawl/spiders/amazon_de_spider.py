@@ -19,3 +19,29 @@ class AmazonDeSpider(AmazonSpider):
                 self.base_url + 'B00GNWJAD2/',  # Dr. House
                 self.base_url + 'B078P41Q4Q/'   # McMafia
             ]
+
+    def filter_title(self, title):
+        # TODO: Check for umlaut since those movies aren't covered in the IMDb module atm
+
+        if '[dt./OV]' in title:
+            title = title.replace('[dt./OV]', '')
+        elif '[OV/OmU]' in title:
+            title = title.replace('[OV/OmU]', '')
+        elif '[OV]' in title:
+            title = title.replace('[OV]', '')
+        elif '[OmU]' in title:
+            title = title.replace('[OmU]', '')
+        if '(Subbed)' in title:
+            title = title.replace('(Subbed)', '')
+        if '(inkl. Bonusmaterial)' in title:
+            title = title.replace('(inkl. Bonusmaterial)', '')
+        return title
+
+    def extract_movie_type(self):
+        movie_type = ""
+        if self.imdb_data is not None:
+            if self.imdb_data['type'] == "movie":
+                movie_type = "Film"
+            elif self.imdb_data['type'] == "series":
+                movie_type = "Serie"
+        return movie_type

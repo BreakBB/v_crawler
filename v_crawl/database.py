@@ -36,12 +36,27 @@ class Database:
         return
 
     def insert_item(self, movie_item):
-        query_string = "INSERT INTO %s (movie_id, url, title, rating, imdb, genres, year, fsk)" \
-                       "VALUES (" \
-                       "%%(movie_id)s, %%(url)s, %%(title)s, %%(rating)s, %%(imdb)s, %%(genres)s, %%(year)s, %%(fsk)s" \
-                       ") ON CONFLICT DO NOTHING RETURNING movie_id;" % self.table_name
+        query = "INSERT INTO %s (movie_id, url, title, movie_type, rating, imdb, genres, year, fsk, poster)" \
+                "VALUES (" \
+                "%%(movie_id)s, " \
+                "%%(url)s, " \
+                "%%(title)s, " \
+                "%%(movie_type)s, " \
+                "%%(rating)s, " \
+                "%%(imdb)s, " \
+                "%%(genres)s, " \
+                "%%(year)s, " \
+                "%%(fsk)s, " \
+                "%%(poster)s" \
+                ") ON CONFLICT DO NOTHING RETURNING movie_id;" % self.table_name
         try:
-            self.cursor.execute(query_string, movie_item)
+            poster_path = movie_item['poster']
+            if poster_path is "NULL":
+                self.cursor.execute(query, movie_item)
+            else:
+                with open(poster_path, "rb") as file:
+                    movie_item['poster'] = psycopg2.Binary(file.read())
+                    self.cursor.execute(query, movie_item)
         except psycopg2.Error as e:
             print(e.pgerror)
             self.conn.rollback()
@@ -56,3 +71,10 @@ class Database:
         self.conn.commit()
         print("Successfully added new item to DB")
         return
+
+    def __del__(self):
+        if self.cursor is not None:
+            self.cursor.close()
+
+        if self.conn is not None:
+            self.conn.close()
