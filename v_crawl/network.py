@@ -18,9 +18,11 @@ class Network:
 
     def renew_ip(self):
         print("Getting new Tor IP")
+        # Connect to the TOR-controller
         with Controller.from_port(port=9151) as controller:
             controller.authenticate()
             try:
+                # Wait till the controller is ready for a NEWNYM signal
                 while not controller.is_newnym_available():
                     sleep(0.5)
                 controller.signal(Signal.NEWNYM)
@@ -42,14 +44,17 @@ class Network:
     def get_movie_poster(self, movie_id, poster_url, image_dir):
         file_path = "NULL"
 
-        # No poster for this movie
+        # No poster from IMDb for this movie
         if poster_url == "N/A":
             return file_path
 
+        # Get the image from the given URL
         response = self.session.get(poster_url, stream=True)
 
         if response.status_code == 200:
             file_path = image_dir + movie_id + '.jpg'
+
+            # Decode the image and save it in the given directory
             with open(file_path, 'wb') as file:
                 response.raw.decode_content = True
                 shutil.copyfileobj(response.raw, file)

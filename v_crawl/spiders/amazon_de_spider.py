@@ -6,6 +6,9 @@ class AmazonDeSpider(AmazonSpider):
     base_url = "https://www.amazon.de/gp/video/detail/"
     table_name = "amazon_video_de"
 
+    series = "Serie"
+    movie = "Film"
+
     def load_default_seed_urls(self):
         return [
                 self.base_url + 'B00IB1IFL6/',  # Criminal Minds
@@ -37,11 +40,26 @@ class AmazonDeSpider(AmazonSpider):
             title = title.replace('(inkl. Bonusmaterial)', '')
         return title
 
-    def extract_movie_type(self):
-        movie_type = ""
+    def extract_movie_type(self, detail_selector, series_selector):
         if self.imdb_data is not None:
             if self.imdb_data['type'] == "movie":
-                movie_type = "Film"
+                return self.movie
             elif self.imdb_data['type'] == "series":
-                movie_type = "Serie"
-        return movie_type
+                return self.series
+
+        if series_selector is not None:
+            return self.series
+
+        movie_runtime = detail_selector.css('span[data-automation-id="runtime-badge"]::text').extract_first()
+        if movie_runtime is not None:
+            return self.movie
+
+        badge_section = detail_selector.css('div[class="av-badges"]')
+        if badge_section is not None:
+            badges = badge_section.css('span[class="av-badge-text"]::text').extract()
+            for badge in badges:
+                if "Min." in badge:
+                    return self.movie
+
+        # This should never happen
+        return ""

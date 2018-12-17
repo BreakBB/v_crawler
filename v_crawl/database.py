@@ -16,6 +16,7 @@ class Database:
         parser = ConfigParser()
         parser.read(filename)
 
+        # Read the settings from the given ini file
         if parser.has_section(section):
             params = parser.items(section)
             for param in params:
@@ -36,6 +37,7 @@ class Database:
         return
 
     def insert_item(self, movie_item):
+        # Create the query and add the table to it
         query = "INSERT INTO %s (movie_id, url, title, movie_type, rating, imdb, genres, year, fsk, poster)" \
                 "VALUES (" \
                 "%%(movie_id)s, " \
@@ -51,9 +53,12 @@ class Database:
                 ") ON CONFLICT DO NOTHING RETURNING movie_id;" % self.table_name
         try:
             poster_path = movie_item['poster']
+
+            # No poster found for this movie
             if poster_path is "NULL":
                 self.cursor.execute(query, movie_item)
             else:
+                # Get the poster and encode it as binary for the DB
                 with open(poster_path, "rb") as file:
                     movie_item['poster'] = psycopg2.Binary(file.read())
                     self.cursor.execute(query, movie_item)

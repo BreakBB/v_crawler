@@ -93,11 +93,17 @@ class AmazonSpider(scrapy.Spider):
         movie_id = response.url[-11:-1]
         url = self.base_url + movie_id + '/'
 
+        # Debug purpose
+        # with open('./data/' + movie_id + '.html', "wb") as file:
+        #     file.write(response.body)
+
         # We only want to parse the recommendations since we get a poster from there
         if url not in self.seed_urls:
             # Parse the current website
-            meta_selector = response.css('section[class="av-detail-section"]')
-            movie_item = self.parse_current_site(meta_selector, url, movie_id)
+            detail_selector = response.css('section[class="av-detail-section"]')
+            series_selector = response.css('div[id="dv-episode-list"]').extract_first()
+
+            movie_item = self.parse_current_site(detail_selector, series_selector, url, movie_id)
             if movie_item is not None:
                 yield movie_item
         else:
@@ -112,28 +118,28 @@ class AmazonSpider(scrapy.Spider):
             if request is not None:
                 yield request
 
-        self.extract_fsk(recom_selector)
-
         return
 
-    def parse_current_site(self, meta_selector, url, movie_id):
-        title = self.extract_title(meta_selector)
+    def parse_current_site(self, detail_selector, series_selector, url, movie_id):
+        title = self.extract_title(detail_selector)
 
         if title is None:
             print("title is none. Couldn't extract title from HTML?")
             return None
 
+        # Try to get IMDb data from the imdb-api-server
         self.imdb_data = self.network.get_imdb_data(title)
 
-        rating = self.extract_rating(meta_selector)
-        imdb = self.extract_imdb_rating(meta_selector)
-        genres = self.extract_genres(meta_selector)
-        year = self.extract_year(meta_selector)
-        fsk = self.extract_fsk(meta_selector)
-        movie_type = self.extract_movie_type()
+        # Extract all kind of relevant information
+        rating = self.extract_rating(detail_selector)
+        imdb = self.extract_imdb_rating(detail_selector)
+        genres = self.extract_genres(detail_selector)
+        year = self.extract_year(detail_selector)
+        fsk = self.extract_fsk(detail_selector)
+        movie_type = self.extract_movie_type(detail_selector, series_selector)
 
         poster_path = self.image_dir + movie_id + '.jpg'
-        # The poster might be added earlier from the recommendations
+        # The poster might be added earlier from the recommendations and we only want to add new posters
         if not os.path.exists(poster_path) and self.imdb_data is not None:
             poster_path = self.network.get_movie_poster(movie_id, self.imdb_data['poster'], self.image_dir)
 
@@ -283,10 +289,25 @@ class AmazonSpider(scrapy.Spider):
         if poster_url is not None:
             self.network.get_movie_poster(movie_id, poster_url, self.image_dir)
 
-    def extract_movie_type(self):
+    def extract_movie_type(self, detail_selector, series_selector):
         if self.imdb_data is not None:
             return self.imdb_data['type']
 
+        if series_selector is not None:
+            return "series"
+
+        movie_runtime = detail_selector.css('span[data-automation-id="runtime-badge"]::text').extract_first()
+        if movie_runtime is not None:
+            return "movie"
+
+        badge_section = detail_selector.css('div[class="av-badges"]')
+        if badge_section is not None:
+            badges = badge_section.css('span[class="av-badge-text"]::text').extract()
+            for badge in badges:
+                if "min" in badge:
+                    return "movie"
+
+        # This should never happen
         return ""
 
     def should_timeout(self):
