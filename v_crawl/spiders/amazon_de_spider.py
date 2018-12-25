@@ -30,15 +30,54 @@ class AmazonDeSpider(AmazonSpider):
             title = title.replace('[dt./OV]', '')
         elif '[OV/OmU]' in title:
             title = title.replace('[OV/OmU]', '')
+        elif '[OV/Omu]' in title:
+            title = title.replace('[OV/Omu]', '')
         elif '[OV]' in title:
             title = title.replace('[OV]', '')
         elif '[OmU]' in title:
             title = title.replace('[OmU]', '')
+        elif '[Omu]' in title:
+            title = title.replace('[Omu]', '')
         if '(Subbed)' in title:
             title = title.replace('(Subbed)', '')
         if '(inkl. Bonusmaterial)' in title:
             title = title.replace('(inkl. Bonusmaterial)', '')
         return title
+
+    def extract_genres(self, meta_selector):
+        genre_list = super().extract_genres(meta_selector)
+
+        for genre in genre_list:
+            if genre is "Adventure":
+                genre_list.remove("Adventure")
+                genre_list.append("Abenteuer")
+            elif genre is "Biography":
+                genre_list.remove("Biography")
+                genre_list.append("Biografie")
+            elif genre is "Crime":
+                genre_list.remove("Crime")
+                genre_list.append("Krimi")
+            elif genre is "Documentary":
+                genre_list.remove("Documentary")
+                genre_list.append("Dokumentation")
+            elif genre is "History":
+                genre_list.remove("History")
+                genre_list.append("Geschichte")
+            elif genre is "Family":
+                genre_list.remove("Family")
+                genre_list.append("Kinder")
+            elif genre is "Music":
+                genre_list.remove("Music")
+                genre_list.append("Musik")
+            elif genre is "Romance":
+                genre_list.remove("Romance")
+                genre_list.append("Romantik")
+            elif genre is "Sci-Fi":
+                genre_list.remove("Sci-Fi")
+                genre_list.append("Science Fiction")
+            elif genre is "War":
+                genre_list.remove("War")
+                genre_list.append("Militär und Krieg")
 
     def extract_movie_type(self, detail_selector, series_selector):
         if self.imdb_data is not None:
