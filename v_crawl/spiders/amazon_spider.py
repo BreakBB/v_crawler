@@ -3,6 +3,7 @@ import logging
 import random
 import re
 import os
+from multiprocessing import Value
 from pathlib import Path
 
 import time
@@ -14,6 +15,10 @@ from scrapy.utils.project import get_project_settings
 from v_crawl.database import Database
 from v_crawl.network import Network
 from v_crawl.pipelines import JsonLinesExportPipeline
+
+# Global and synchronized Value to count new movies
+added_counter = Value("i", 0)
+timeout_reached = Value("i", False)
 
 
 class AmazonSpider(scrapy.Spider):
@@ -90,6 +95,11 @@ class AmazonSpider(scrapy.Spider):
         raise Exception("No default seed urls defined. Make sure to overload 'load_default_seed_urls' method.")
 
     def parse(self, response):
+        # Shutdown due to timeout
+        global timeout_reached
+        if timeout_reached.value:
+            return
+
         movie_id = response.url[-11:-1]
         url = self.base_url + movie_id + '/'
 
@@ -158,7 +168,10 @@ class AmazonSpider(scrapy.Spider):
         }
 
         # Add the found movie/series to the database
-        self.db_conn.insert_item(movie_item)
+        was_added = self.db_conn.insert_item(movie_item)
+        if was_added:
+            global added_counter
+            added_counter.value += 1
 
         # Cast Decimal back to float to be serializable for json
         movie_item['rating'] = float(movie_item['rating'])
@@ -173,8 +186,19 @@ class AmazonSpider(scrapy.Spider):
         return movie_item
 
     def parse_recommendations(self, recommendation):
+        # Shutdown due to timeout
+        global timeout_reached
+        if timeout_reached.value:
+            return
+
+        # Check if timeout is reached
         if self.should_timeout():
-            raise CloseSpider("Timeout of %s seconds reached" % self.spider_timeout)
+            timeout_reached.value = True
+            global added_counter
+            raise CloseSpider(
+                "Timeout of %s seconds reached. Added %s new movies/series."
+                % (self.spider_timeout, added_counter.value)
+            )
 
         url = recommendation.css('a[href*="/gp/video/detail/"]::attr(href)').extract_first()
 

@@ -65,17 +65,17 @@ class Database:
         except psycopg2.Error as e:
             print(e.pgerror)
             self.conn.rollback()
-            return
+            return False
 
         result = self.cursor.fetchone()
 
         if result is None:
             print("Didn't add item to DB")
-            return
+            return False
 
         self.conn.commit()
         print("Successfully added new item to DB")
-        return
+        return True
 
     def __del__(self):
         if self.cursor is not None:

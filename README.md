@@ -51,6 +51,12 @@ It is using the [Scrapy Framework](https://github.com/scrapy/scrapy) and extract
     )
     ```
     
+    - To improve the query speed you want to create an index for the LOWER() funtion of PostgreSQL:
+    ```SQL
+    CREATE INDEX ON amazon_video_de (LOWER(title))
+    ```
+    
+    
 ### IMDb API server
 
 1. Install my [imdb-api-server](https://github.com/BreakBB/imdb-api-server)
