@@ -238,7 +238,7 @@ class AmazonSpider(scrapy.Spider):
 
         if len(genre_list) == 0:
             if self.imdb_data is not None:
-                genre_list = self.imdb_data['genres'].split(',')
+                genre_list = self.imdb_data['genres'].split(', ')
             else:
                 genre_list.append("None")
 
