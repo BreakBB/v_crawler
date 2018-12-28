@@ -42,6 +42,10 @@ class AmazonDeSpider(AmazonSpider):
             title = title.replace('(Subbed)', '')
         if '(inkl. Bonusmaterial)' in title:
             title = title.replace('(inkl. Bonusmaterial)', '')
+        if '(4K UHD)' in title:
+            title = title.replace('(4K UHD)', '')
+        if '(Extended Edition)' in title:
+            title = title.replace('(Extended Edition)', '')
         return title
 
     def extract_genres(self, meta_selector):
@@ -78,6 +82,8 @@ class AmazonDeSpider(AmazonSpider):
             elif genre is "War":
                 genre_list.remove("War")
                 genre_list.append("Militär und Krieg")
+
+        return genre_list
 
     def extract_movie_type(self, detail_selector, series_selector):
         if self.imdb_data is not None:
