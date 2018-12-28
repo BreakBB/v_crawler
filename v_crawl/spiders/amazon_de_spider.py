@@ -1,3 +1,5 @@
+import re
+
 from v_crawl.spiders.amazon_spider import AmazonSpider
 
 
@@ -84,6 +86,22 @@ class AmazonDeSpider(AmazonSpider):
                 genre_list.append("Militär und Krieg")
 
         return genre_list
+
+    def extract_maturity_rating(self, meta_selector):
+        fsk_string = meta_selector.css('span[data-automation-id="maturity-rating-badge"]::attr(title)').extract_first()
+
+        if fsk_string is None:
+            fsk_string = meta_selector.css('span[class*="RegulatoryRatingIcon"]::attr(title)').extract_first()
+
+        fsk = 0
+
+        # Get the actual value out of the string
+        if fsk_string:
+            fsk_match = re.search(r'\d\d?', fsk_string)
+            if fsk_match:
+                fsk = int(fsk_match.group(0))
+
+        return fsk
 
     def extract_movie_type(self, detail_selector, series_selector):
         if self.imdb_data is not None:

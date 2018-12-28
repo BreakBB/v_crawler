@@ -1,7 +1,6 @@
 import json
 import logging
 import random
-import re
 import os
 from multiprocessing import Value
 from pathlib import Path
@@ -92,7 +91,7 @@ class AmazonSpider(scrapy.Spider):
         return
 
     def load_default_seed_urls(self):
-        raise Exception("No default seed urls defined. Make sure to overload 'load_default_seed_urls' method.")
+        raise NotImplementedError
 
     def parse(self, response):
         # Shutdown due to timeout
@@ -145,7 +144,7 @@ class AmazonSpider(scrapy.Spider):
         imdb = self.extract_imdb_rating(detail_selector)
         genres = self.extract_genres(detail_selector)
         year = self.extract_year(detail_selector)
-        fsk = self.extract_fsk(detail_selector)
+        fsk = self.extract_maturity_rating(detail_selector)
         movie_type = self.extract_movie_type(detail_selector, series_selector)
 
         poster_path = self.image_dir + movie_id + '.jpg'
@@ -244,21 +243,8 @@ class AmazonSpider(scrapy.Spider):
 
         return genre_list
 
-    def extract_fsk(self, meta_selector):
-        fsk_string = meta_selector.css('span[data-automation-id="maturity-rating-badge"]::attr(title)').extract_first()
-
-        if fsk_string is None:
-            fsk_string = meta_selector.css('span[class*="RegulatoryRatingIcon"]::attr(title)').extract_first()
-
-        fsk = 0
-
-        # Get the actual value out of the string
-        if fsk_string:
-            fsk_match = re.search(r'\d\d?', fsk_string)
-            if fsk_match:
-                fsk = int(fsk_match.group(0))
-
-        return fsk
+    def extract_maturity_rating(self, meta_selector):
+        raise NotImplementedError
 
     def extract_rating(self, meta_selector):
         rating = meta_selector.css('span[class*="av-stars"]').re_first(r'\d-?\d?')
