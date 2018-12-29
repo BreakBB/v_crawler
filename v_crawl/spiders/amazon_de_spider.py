@@ -54,34 +54,34 @@ class AmazonDeSpider(AmazonSpider):
         genre_list = super().extract_genres(meta_selector)
 
         for genre in genre_list:
-            if genre is "Adventure":
+            if genre == "Adventure":
                 genre_list.remove("Adventure")
                 genre_list.append("Abenteuer")
-            elif genre is "Biography":
+            elif genre == "Biography":
                 genre_list.remove("Biography")
                 genre_list.append("Biografie")
-            elif genre is "Crime":
+            elif genre == "Crime":
                 genre_list.remove("Crime")
                 genre_list.append("Krimi")
-            elif genre is "Documentary":
+            elif genre == "Documentary":
                 genre_list.remove("Documentary")
                 genre_list.append("Dokumentation")
-            elif genre is "History":
+            elif genre == "History":
                 genre_list.remove("History")
                 genre_list.append("Geschichte")
-            elif genre is "Family":
+            elif genre == "Family":
                 genre_list.remove("Family")
                 genre_list.append("Kinder")
-            elif genre is "Music":
+            elif genre == "Music":
                 genre_list.remove("Music")
                 genre_list.append("Musik")
-            elif genre is "Romance":
+            elif genre == "Romance":
                 genre_list.remove("Romance")
                 genre_list.append("Romantik")
-            elif genre is "Sci-Fi":
+            elif genre == "Sci-Fi":
                 genre_list.remove("Sci-Fi")
                 genre_list.append("Science Fiction")
-            elif genre is "War":
+            elif genre == "War":
                 genre_list.remove("War")
                 genre_list.append("Militär und Krieg")
 
