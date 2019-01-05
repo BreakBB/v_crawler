@@ -47,7 +47,8 @@ It is using the [Scrapy Framework](https://github.com/scrapy/scrapy) and extract
         year NUMERIC,
         fsk NUMERIC,
         movie_type varchar(255),
-        poster BYTEA
+        poster BYTEA,
+        number SERIAL
     )
     ```
     

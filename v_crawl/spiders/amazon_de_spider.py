@@ -75,6 +75,9 @@ class AmazonDeSpider(AmazonSpider):
             elif genre == "Music":
                 genre_list.remove("Music")
                 genre_list.append("Musik")
+            elif genre == "N/A":
+                genre_list.remove("N/A")
+                genre_list.append("None")
             elif genre == "Romance":
                 genre_list.remove("Romance")
                 genre_list.append("Romantik")
