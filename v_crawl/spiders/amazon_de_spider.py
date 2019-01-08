@@ -7,9 +7,7 @@ class AmazonDeSpider(AmazonSpider):
     name = "v_crawler_de"
     base_url = "https://www.amazon.de/gp/video/detail/"
     table_name = "amazon_video_de"
-
-    series = "Serie"
-    movie = "Film"
+    image_dir = "./data/images_de/"
 
     def load_default_seed_urls(self):
         return [
@@ -91,41 +89,38 @@ class AmazonDeSpider(AmazonSpider):
         return genre_list
 
     def extract_maturity_rating(self, meta_selector):
-        fsk_string = meta_selector.css('span[data-automation-id="maturity-rating-badge"]::attr(title)').extract_first()
+        matu_string = meta_selector.css('span[data-automation-id="maturity-rating-badge"]::attr(title)').extract_first()
 
-        if fsk_string is None:
-            fsk_string = meta_selector.css('span[class*="RegulatoryRatingIcon"]::attr(title)').extract_first()
+        if matu_string is None:
+            matu_string = meta_selector.css('span[class*="RegulatoryRatingIcon"]::attr(title)').extract_first()
 
-        fsk = 0
+        matu_rating = 0
 
         # Get the actual value out of the string
-        if fsk_string:
-            fsk_match = re.search(r'\d\d?', fsk_string)
-            if fsk_match:
-                fsk = int(fsk_match.group(0))
+        if matu_string:
+            matu_match = re.search(r'\d\d?', matu_string)
+            if matu_match:
+                matu_rating = int(matu_match.group(0))
 
-        return fsk
+        return matu_rating
 
     def extract_movie_type(self, detail_selector, series_selector):
         if self.imdb_data is not None:
-            if self.imdb_data['type'] == "movie":
-                return self.movie
-            elif self.imdb_data['type'] == "series":
-                return self.series
+            return self.imdb_data['type']
 
         if series_selector is not None:
-            return self.series
+            return "series"
 
         movie_runtime = detail_selector.css('span[data-automation-id="runtime-badge"]::text').extract_first()
         if movie_runtime is not None:
-            return self.movie
+            return "movie"
 
         badge_section = detail_selector.css('div[class="av-badges"]')
         if badge_section is not None:
             badges = badge_section.css('span[class="av-badge-text"]::text').extract()
             for badge in badges:
                 if "Min." in badge:
-                    return self.movie
+                    return "movie"
 
         # This should never happen
         return ""

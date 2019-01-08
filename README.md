@@ -36,26 +36,31 @@ It is using the [Scrapy Framework](https://github.com/scrapy/scrapy) and extract
 2. Create a table using the following specs:
 
     ```SQL
-    CREATE TABLE amazon_video_de
+    CREATE TABLE amazon_video_com
     (
-        movie_id VARCHAR(10) not null primary key,
-        url VARCHAR(255) not null,
-        title VARCHAR(255) not null,
-        rating FLOAT,
-        imdb FLOAT,
+        number SERIAL NOT NULL,
+        movie_id VARCHAR(10) NOT NULL PRIMARY KEY,
+        url VARCHAR(255) NOT NULL,
+        title VARCHAR(255) NOT NULL,
+        rating DOUBLE PRECISION,
+        imdb DOUBLE PRECISION,
         genres VARCHAR[],
-        year NUMERIC,
-        fsk NUMERIC,
-        movie_type varchar(255),
+        year INTEGER,
+        fsk INTEGER,
+        movie_type VARCHAR(255),
         poster BYTEA,
-        number SERIAL
+        directors VARCHAR[],
+        actors VARCHAR[],
+        writer VARCHAR[]
     )
     ```
     
-    - To improve the query speed you want to create an index for the LOWER() funtion of PostgreSQL:
+    - To improve the query speed you want to create an index for the LOWER() function of PostgreSQL:
     ```SQL
-    CREATE INDEX ON amazon_video_de (LOWER(title))
+    CREATE INDEX ON amazon_video_com (LOWER(title))
     ```
+    
+    - If you want to crawl another domain of prime video you should create a table for it and implement a spider for it (have a look at the "amazon_de_spider")
     
     
 ### IMDb API server

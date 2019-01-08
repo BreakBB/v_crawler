@@ -29,5 +29,3 @@ USER_AGENT_LIST = "user_agents.txt"
 COOKIES_ENABLED = False
 
 FEED_FORMAT = 'json'
-
-IMAGE_DIR = "./data/images/"

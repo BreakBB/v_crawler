@@ -2,6 +2,7 @@ import json
 import logging
 import random
 import os
+import re
 from multiprocessing import Value
 from pathlib import Path
 
@@ -9,7 +10,6 @@ import time
 
 import scrapy
 from scrapy.exceptions import CloseSpider
-from scrapy.utils.project import get_project_settings
 
 from v_crawl.database import Database
 from v_crawl.network import Network
@@ -49,9 +49,7 @@ class AmazonSpider(scrapy.Spider):
         # Create a connection to the database
         self.db_conn = Database(self.table_name)
 
-        settings = get_project_settings()
-        self.image_dir = settings.get('IMAGE_DIR')
-        if not self.image_dir:
+        if self.image_dir == "":
             self.image_dir = './images'
 
         if not os.path.exists(self.image_dir):
@@ -140,12 +138,15 @@ class AmazonSpider(scrapy.Spider):
         self.imdb_data = self.network.get_imdb_data(title)
 
         # Extract all kind of relevant information
-        rating = self.extract_rating(detail_selector)
-        imdb = self.extract_imdb_rating(detail_selector)
+        star_rating = self.extract_star_rating(detail_selector)
+        imdb_rating = self.extract_imdb_rating(detail_selector)
         genres = self.extract_genres(detail_selector)
         year = self.extract_year(detail_selector)
-        fsk = self.extract_maturity_rating(detail_selector)
+        maturity_rating = self.extract_maturity_rating(detail_selector)
         movie_type = self.extract_movie_type(detail_selector, series_selector)
+        directors = self.extract_directors()
+        actors = self.extract_actors()
+        writer = self.extract_writer()
 
         poster_path = self.image_dir + movie_id + '.jpg'
         # The poster might be added earlier from the recommendations and we only want to add new posters
@@ -158,12 +159,15 @@ class AmazonSpider(scrapy.Spider):
             'url': url,
             'title': title,
             'movie_type': movie_type,
-            'rating': rating,
-            'imdb': imdb,
+            'star_rating': star_rating,
+            'imdb_rating': imdb_rating,
             'genres': genres,
             'year': year,
-            'fsk': fsk,
-            'poster': poster_path
+            'maturity_rating': maturity_rating,
+            'poster': poster_path,
+            'directors': directors,
+            'actors': actors,
+            'writer': writer
         }
 
         # Add the found movie/series to the database
@@ -173,8 +177,8 @@ class AmazonSpider(scrapy.Spider):
             added_counter.value += 1
 
         # Cast Decimal back to float to be serializable for json
-        movie_item['rating'] = float(movie_item['rating'])
-        movie_item['imdb'] = float(movie_item['imdb'])
+        movie_item['star_rating'] = float(movie_item['star_rating'])
+        movie_item['imdb_rating'] = float(movie_item['imdb_rating'])
         movie_item['poster'] = poster_path
 
         # Keep the directory clean
@@ -246,15 +250,15 @@ class AmazonSpider(scrapy.Spider):
     def extract_maturity_rating(self, meta_selector):
         raise NotImplementedError
 
-    def extract_rating(self, meta_selector):
-        rating = meta_selector.css('span[class*="av-stars"]').re_first(r'\d-?\d?')
-        if rating is not None:
-            if '-' in rating:
-                rating = rating.replace('-', '.')
-            rating = float(rating)
+    def extract_star_rating(self, meta_selector):
+        star_rating = meta_selector.css('span[class*="av-stars"]').re_first(r'\d-?\d?')
+        if star_rating is not None:
+            if '-' in star_rating:
+                star_rating = star_rating.replace('-', '.')
+            star_rating = float(star_rating)
         else:
-            rating = 0
-        return rating
+            star_rating = 0
+        return star_rating
 
     def extract_year(self, meta_selector):
         year = meta_selector.css('span[data-automation-id="release-year-badge"]::text').extract_first()
@@ -319,6 +323,44 @@ class AmazonSpider(scrapy.Spider):
 
         # This should never happen
         return ""
+
+    def extract_directors(self):
+        director_list = []
+
+        if self.imdb_data is not None:
+            imdb_list = self.imdb_data['director'].split(", ")
+            for director in imdb_list:
+                # Remove information like (co-director)
+                director = re.sub(r'\(.*\)', '', director)
+                director_list.append(director)
+        else:
+            director_list.append("None")
+
+        return director_list
+
+    def extract_actors(self):
+        actor_list = []
+
+        if self.imdb_data is not None:
+            actor_list = self.imdb_data['actors'].split(", ")
+        else:
+            actor_list.append("None")
+
+        return actor_list
+
+    def extract_writer(self):
+        writer_list = []
+
+        if self.imdb_data is not None:
+            imdb_list = self.imdb_data['writer'].split(", ")
+            for writer in imdb_list:
+                # Remove information like (co-director)
+                writer = re.sub(r'\(.*\)', '', writer)
+                writer_list.append(writer)
+        else:
+            writer_list.append("None")
+
+        return writer_list
 
     def should_timeout(self):
         if time.time() - self.spider_start_time > self.spider_timeout:

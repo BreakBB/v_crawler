@@ -38,18 +38,22 @@ class Database:
 
     def insert_item(self, movie_item):
         # Create the query and add the table to it
-        query = "INSERT INTO %s (movie_id, url, title, movie_type, rating, imdb, genres, year, fsk, poster)" \
+        query = "INSERT INTO %s (movie_id, url, title, movie_type, star_rating, imdb_rating, genres, year, " \
+                "maturity_rating, poster, directors, actors, writer)" \
                 "VALUES (" \
                 "%%(movie_id)s, " \
                 "%%(url)s, " \
                 "%%(title)s, " \
                 "%%(movie_type)s, " \
-                "%%(rating)s, " \
-                "%%(imdb)s, " \
+                "%%(star_rating)s, " \
+                "%%(imdb_rating)s, " \
                 "%%(genres)s, " \
                 "%%(year)s, " \
-                "%%(fsk)s, " \
-                "%%(poster)s" \
+                "%%(maturity_rating)s, " \
+                "%%(poster)s, " \
+                "%%(directors)s, " \
+                "%%(actors)s, " \
+                "%%(writer)s" \
                 ") ON CONFLICT DO NOTHING RETURNING movie_id;" % self.table_name
         try:
             poster_path = movie_item['poster']
