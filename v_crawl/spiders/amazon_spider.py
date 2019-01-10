@@ -331,7 +331,7 @@ class AmazonSpider(scrapy.Spider):
             imdb_list = self.imdb_data['director'].split(", ")
             for director in imdb_list:
                 # Remove information like (co-director)
-                director = re.sub(r'\(.*\)', '', director)
+                director = re.sub(r' \(.*\)', '', director)
                 director_list.append(director)
         else:
             director_list.append("None")
@@ -355,7 +355,7 @@ class AmazonSpider(scrapy.Spider):
             imdb_list = self.imdb_data['writer'].split(", ")
             for writer in imdb_list:
                 # Remove information like (co-director)
-                writer = re.sub(r'\(.*\)', '', writer)
+                writer = re.sub(r' \(.*\)', '', writer)
                 writer_list.append(writer)
         else:
             writer_list.append("None")

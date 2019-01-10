@@ -5,6 +5,7 @@ import requests
 from time import sleep
 
 import stem
+from scrapy.exceptions import CloseSpider
 from stem import Signal
 from stem.control import Controller
 
@@ -32,7 +33,13 @@ class Network:
         return
 
     def get_imdb_data(self, title):
-        response = self.session.post("http://localhost:8555/api/imdb", json={"title": title})
+        try:
+            response = self.session.post("http://localhost:8555/api/imdb", json={"title": title})
+        except requests.exceptions.ConnectionError:
+            error_message = "Error while connecting to the imdb server. Make sure it is running."
+            print(error_message)
+            raise CloseSpider(error_message)
+
         result = json.loads(response.text)
 
         if response.status_code == 200:

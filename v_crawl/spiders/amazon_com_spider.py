@@ -34,14 +34,28 @@ class AmazonComSpider(AmazonSpider):
             title = title.replace(' [Español]', '')
         elif ' (EXTENDED)' in title:
             title = title.replace(' (EXTENDED)', '')
+        elif ' (Extended Cut)' in title:
+            title = title.replace(' (Extended Cut)', '')
+        elif ' (In Color)' in title:
+            title = title.replace(' (In Color)')
         elif ' (Original Japanese Version)' in title:
             title = title.replace(' (Original Japanese Version)', '')
+        elif ' (Plus Bonus Content)' in title:
+            title = title.replace(' (Plus Bonus Content)', '')
         elif ' (Plus Bonus Features)' in title:
             title = title.replace(' (Plus Bonus Features)', '')
         elif ' (Subbed)' in title:
             title = title.replace(' (Subbed)', '')
+        elif ' (Theatrical)' in title:
+            title = title.replace(' (Theatrical)', '')
         elif ' (Theatrical Version)' in title:
             title = title.replace(' (Theatrical Version)', '')
+        elif ' (Uncut edition)' in title:
+            title = title.replace(' (Uncut edition)', '')
+        elif ' (unrated)' in title:
+            title = title.replace(' (unrated)', '')
+        elif ' (Unrated)' in title:
+            title = title.replace(' (Unrated)', '')
         if ' - English Dub' in title:
             title = title.replace(' - English Dub', '')
         elif ' - Rated' in title:
