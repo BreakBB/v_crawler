@@ -11,6 +11,7 @@ class AmazonComSpider(AmazonSpider):
     def load_default_seed_urls(self):
         return [
             self.base_url + 'B0748PJSBJ/',  # Valerian
+            self.base_url + 'B005H9B2CE/',  # Thor
             self.base_url + 'B000Q76K1A/',  # The Bourne Identity
             self.base_url + 'B078X1RBH5/',  # After the Rain
             self.base_url + 'B07GFS578F/',  # Destination Wedding
@@ -71,3 +72,12 @@ class AmazonComSpider(AmazonSpider):
             matu_string = meta_selector.css('span[class*="RegulatoryRatingIcon"]::attr(title)').extract_first()
 
         return matu_string
+
+    def extract_genres(self, meta_selector):
+        genre_list = super().extract_genres(meta_selector)
+
+        if "N/A" in genre_list:
+            genre_list.remove("N/A")
+            genre_list.append("None")
+
+        return genre_list

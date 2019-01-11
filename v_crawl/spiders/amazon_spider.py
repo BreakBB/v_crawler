@@ -25,7 +25,7 @@ class AmazonSpider(scrapy.Spider):
     table_name = ""  # The name of the database table
     base_url = ""  # The base_url to crawl
 
-    spider_timeout = 120
+    spider_timeout = 360
     spider_start_time = 0
     seed_urls = []
     movies_crawled = set()
@@ -332,7 +332,8 @@ class AmazonSpider(scrapy.Spider):
             for director in imdb_list:
                 # Remove information like (co-director)
                 director = re.sub(r' \(.*\)', '', director)
-                director_list.append(director)
+                if director not in director_list:
+                    director_list.append(director)
         else:
             director_list.append("None")
 
@@ -354,9 +355,10 @@ class AmazonSpider(scrapy.Spider):
         if self.imdb_data is not None:
             imdb_list = self.imdb_data['writer'].split(", ")
             for writer in imdb_list:
-                # Remove information like (co-director)
+                # Remove information like (screenplay)
                 writer = re.sub(r' \(.*\)', '', writer)
-                writer_list.append(writer)
+                if writer not in writer_list:
+                    writer_list.append(writer)
         else:
             writer_list.append("None")
 
