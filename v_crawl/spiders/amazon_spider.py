@@ -10,6 +10,8 @@ import time
 
 import scrapy
 from scrapy.exceptions import CloseSpider
+from scrapy import signals
+from scrapy.xlib.pydispatch import dispatcher
 
 from v_crawl.database import Database
 from v_crawl.network import Network
@@ -39,6 +41,9 @@ class AmazonSpider(scrapy.Spider):
         self.user_agent = agent
 
     def __init__(self):
+        # Register method for spider close
+        dispatcher.connect(self.spider_closed, signals.spider_closed)
+
         if self.name == "":
             raise Exception("'name' must not be empty")
         if self.table_name == "":
@@ -70,6 +75,9 @@ class AmazonSpider(scrapy.Spider):
 
         super().__init__()
         return
+
+    def spider_closed(self, spider):
+        self.db_conn.update_tables()
 
     def start_requests(self):
         self.spider_start_time = time.time()
@@ -243,7 +251,7 @@ class AmazonSpider(scrapy.Spider):
             if self.imdb_data is not None:
                 genre_list = self.imdb_data['genres'].split(', ')
             else:
-                genre_list.append("None")
+                return None
 
         return genre_list
 
@@ -325,44 +333,44 @@ class AmazonSpider(scrapy.Spider):
         return ""
 
     def extract_directors(self):
-        director_list = []
 
         if self.imdb_data is not None:
+            director_list = []
             imdb_list = self.imdb_data['director'].split(", ")
             for director in imdb_list:
                 # Remove information like (co-director)
                 director = re.sub(r' \(.*\)', '', director)
                 if director not in director_list:
                     director_list.append(director)
-        else:
-            director_list.append("None")
 
-        return director_list
+            if director_list[0] == "N/A":
+                return None
+
+            return director_list
+        else:
+            return None
 
     def extract_actors(self):
-        actor_list = []
 
         if self.imdb_data is not None:
-            actor_list = self.imdb_data['actors'].split(", ")
+            return self.imdb_data['actors'].split(", ")
         else:
-            actor_list.append("None")
-
-        return actor_list
+            return None
 
     def extract_writer(self):
-        writer_list = []
 
         if self.imdb_data is not None:
+            writer_list = []
             imdb_list = self.imdb_data['writer'].split(", ")
             for writer in imdb_list:
                 # Remove information like (screenplay)
                 writer = re.sub(r' \(.*\)', '', writer)
                 if writer not in writer_list:
                     writer_list.append(writer)
-        else:
-            writer_list.append("None")
 
-        return writer_list
+            return writer_list
+        else:
+            return None
 
     def should_timeout(self):
         if time.time() - self.spider_start_time > self.spider_timeout:

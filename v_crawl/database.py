@@ -81,6 +81,84 @@ class Database:
         print("Successfully added new item to DB")
         return True
 
+    def update_tables(self):
+        self.__update_genres()
+        self.__update_directors()
+        self.__update_actors()
+        self.__update_writers()
+
+    def __update_genres(self):
+        delete_query = """DELETE FROM genres"""
+        reset_query = """ALTER SEQUENCE genres_genre_id_seq RESTART"""
+        insert_query = """
+          INSERT INTO genres (name) (
+            SELECT DISTINCT unnest(a.genres) FROM %s a
+          ) ON CONFLICT DO NOTHING""" % self.table_name
+
+        try:
+            self.cursor.execute(delete_query)
+            self.cursor.execute(reset_query)
+            self.cursor.execute(insert_query)
+            print("Successfully updated genres")
+        except psycopg2.Error as e:
+            print(e.pgerror)
+            self.conn.rollback()
+            print("Didn't update genres")
+
+    def __update_directors(self):
+        delete_query = """DELETE FROM directors"""
+        reset_query = """ALTER SEQUENCE directors_director_id_seq RESTART"""
+        insert_query = """
+          INSERT INTO directors (name) (
+            SELECT DISTINCT unnest(a.directors) FROM %s a
+          ) ON CONFLICT DO NOTHING""" % self.table_name
+
+        try:
+            self.cursor.execute(delete_query)
+            self.cursor.execute(reset_query)
+            self.cursor.execute(insert_query)
+            print("Successfully updated directors")
+        except psycopg2.Error as e:
+            print(e.pgerror)
+            self.conn.rollback()
+            print("Didn't update directors")
+
+    def __update_actors(self):
+        delete_query = """DELETE FROM actors"""
+        reset_query = """ALTER SEQUENCE actors_actor_id_seq RESTART"""
+        insert_query = """
+          INSERT INTO actors (name) (
+            SELECT DISTINCT unnest(a.actors) FROM %s a
+          ) ON CONFLICT DO NOTHING""" % self.table_name
+
+        try:
+            self.cursor.execute(delete_query)
+            self.cursor.execute(reset_query)
+            self.cursor.execute(insert_query)
+            print("Successfully updated actors")
+        except psycopg2.Error as e:
+            print(e.pgerror)
+            self.conn.rollback()
+            print("Didn't update actors")
+
+    def __update_writers(self):
+        delete_query = """DELETE FROM writers"""
+        reset_query = """ALTER SEQUENCE writers_writer_id_seq RESTART"""
+        insert_query = """
+          INSERT INTO writers (name) (
+            SELECT DISTINCT unnest(a.writer) FROM %s a
+          ) ON CONFLICT DO NOTHING""" % self.table_name
+
+        try:
+            self.cursor.execute(delete_query)
+            self.cursor.execute(reset_query)
+            self.cursor.execute(insert_query)
+            print("Successfully updated writers")
+        except psycopg2.Error as e:
+            print(e.pgerror)
+            self.conn.rollback()
+            print("Didn't update writers")
+
     def __del__(self):
         if self.cursor is not None:
             self.cursor.close()

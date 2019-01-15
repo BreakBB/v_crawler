@@ -43,8 +43,12 @@ class AmazonComSpider(AmazonSpider):
             title = title.replace(' (Original Japanese Version)', '')
         elif ' (Plus Bonus Content)' in title:
             title = title.replace(' (Plus Bonus Content)', '')
+        elif '(Plus Bonus Content)' in title:
+            title = title.replace('(Plus Bonus Content)', '')
         elif ' (Plus Bonus Features)' in title:
             title = title.replace(' (Plus Bonus Features)', '')
+        elif '(Plus Bonus Features)' in title:
+            title = title.replace('(Plus Bonus Features)', '')
         elif ' (Subbed)' in title:
             title = title.replace(' (Subbed)', '')
         elif ' (Theatrical)' in title:
@@ -76,8 +80,8 @@ class AmazonComSpider(AmazonSpider):
     def extract_genres(self, meta_selector):
         genre_list = super().extract_genres(meta_selector)
 
-        if "N/A" in genre_list:
-            genre_list.remove("N/A")
-            genre_list.append("None")
+        # We want the list to be NULL in the DB
+        if genre_list is None or "N/A" in genre_list:
+            return None
 
         return genre_list

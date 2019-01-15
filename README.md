@@ -71,5 +71,7 @@ It is using the [Scrapy Framework](https://github.com/scrapy/scrapy) and extract
     
 ### Python dependencies
 
-1. Install the python dependencies using the **requirements.txt**
+1. Install the python dependencies using the **requirements.txt** with:
+
+    ```pip install -r requirements.txt```
  
