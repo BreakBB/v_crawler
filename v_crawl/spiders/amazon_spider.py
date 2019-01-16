@@ -11,7 +11,6 @@ import time
 import scrapy
 from scrapy.exceptions import CloseSpider
 from scrapy import signals
-from scrapy.xlib.pydispatch import dispatcher
 
 from v_crawl.database import Database
 from v_crawl.network import Network
@@ -33,16 +32,10 @@ class AmazonSpider(scrapy.Spider):
     movies_crawled = set()
     db_conn = None
     network = None
-    user_agent = ""
     imdb_data = None
     image_dir = ""
 
-    def set_user_agent(self, agent):
-        self.user_agent = agent
-
     def __init__(self):
-        # Register method for spider close
-        dispatcher.connect(self.spider_closed, signals.spider_closed)
 
         if self.name == "":
             raise Exception("'name' must not be empty")
@@ -76,7 +69,15 @@ class AmazonSpider(scrapy.Spider):
         super().__init__()
         return
 
-    def spider_closed(self, spider):
+    # This method allows to connect another method (on_spider_closing) with a signal
+    # In this case the connected method will be called, when the spider is closing
+    @classmethod
+    def from_crawler(cls, crawler, *args, **kwargs):
+        spider = super(AmazonSpider, cls).from_crawler(crawler, *args, **kwargs)
+        crawler.signals.connect(spider.on_spider_closing, signals.spider_closed)
+        return spider
+
+    def on_spider_closing(self, spider):
         self.db_conn.update_tables()
 
     def start_requests(self):

@@ -59,8 +59,7 @@ class UserAgentMiddleware(object):
     def process_request(self, request, spider):
         user_agent = self.get_random_user_agent()
         if user_agent:
-            request.headers.setdefault('User-Agent', user_agent)  # Debugging purpose
-            spider.set_user_agent(user_agent)
+            request.headers.setdefault('User-Agent', user_agent)
         return
 
     def get_random_user_agent(self):
