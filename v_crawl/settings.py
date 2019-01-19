@@ -25,6 +25,9 @@ DOWNLOADER_MIDDLEWARES = {
 
 USER_AGENT_LIST = "user_agents.txt"
 
+# Set the amount of requests before a new Tor identity should be acquired
+REQUEST_PER_IDENTITY = 30
+
 # Disable cookies (enabled by default)
 COOKIES_ENABLED = False
 

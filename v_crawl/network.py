@@ -17,8 +17,7 @@ class Network:
         self.session = requests.session()
         return
 
-    def renew_ip(self):
-        print("Getting new Tor IP")
+    def renew_identitiy(self):
         # Connect to the TOR-controller
         with Controller.from_port(port=9151) as controller:
             controller.authenticate()
