@@ -38,7 +38,7 @@ class AmazonComSpider(AmazonSpider):
         elif ' (Extended Cut)' in title:
             title = title.replace(' (Extended Cut)', '')
         elif ' (In Color)' in title:
-            title = title.replace(' (In Color)')
+            title = title.replace(' (In Color)', '')
         elif ' (Original Japanese Version)' in title:
             title = title.replace(' (Original Japanese Version)', '')
         elif ' (Plus Bonus Content)' in title:
