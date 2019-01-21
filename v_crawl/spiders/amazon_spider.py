@@ -77,7 +77,7 @@ class AmazonSpider(scrapy.Spider):
         crawler.signals.connect(spider.on_spider_closing, signals.spider_closed)
         return spider
 
-    def on_spider_closing(self, spider):
+    def on_spider_closing(self):
         self.db_conn.update_tables()
 
     def start_requests(self):
@@ -159,7 +159,7 @@ class AmazonSpider(scrapy.Spider):
 
         poster_path = self.image_dir + movie_id + '.jpg'
         # The poster might be added earlier from the recommendations and we only want to add new posters
-        if not os.path.exists(poster_path) and self.imdb_data is not None:
+        if not os.path.exists(poster_path) and self.imdb_data is not None and 'poster' in self.imdb_data:
             poster_path = self.network.get_movie_poster(movie_id, self.imdb_data['poster'], self.image_dir)
 
         # Create an object for the information
@@ -249,7 +249,7 @@ class AmazonSpider(scrapy.Spider):
             genre_list.append(genre)
 
         if len(genre_list) == 0:
-            if self.imdb_data is not None:
+            if self.imdb_data is not None and 'genres' in self.imdb_data:
                 genre_list = self.imdb_data['genres'].split(', ')
             else:
                 return None
@@ -274,7 +274,7 @@ class AmazonSpider(scrapy.Spider):
         if year is not None:
             year = int(year)
         else:
-            if self.imdb_data is not None:
+            if self.imdb_data is not None and 'year' in self.imdb_data:
                 year = self.imdb_data['year']
             else:
                 year = 0
@@ -287,7 +287,7 @@ class AmazonSpider(scrapy.Spider):
                 imdb = imdb.replace(',', '.')
             imdb = float(imdb)
         else:
-            if self.imdb_data is not None:
+            if self.imdb_data is not None and 'rating' in self.imdb_data:
                 imdb = self.imdb_data['rating']
             else:
                 imdb = 0
@@ -313,7 +313,7 @@ class AmazonSpider(scrapy.Spider):
             self.network.get_movie_poster(movie_id, poster_url, self.image_dir)
 
     def extract_movie_type(self, detail_selector, series_selector):
-        if self.imdb_data is not None:
+        if self.imdb_data is not None and 'type' in self.imdb_data:
             return self.imdb_data['type']
 
         if series_selector is not None:
@@ -335,7 +335,7 @@ class AmazonSpider(scrapy.Spider):
 
     def extract_directors(self):
 
-        if self.imdb_data is not None:
+        if self.imdb_data is not None and 'director' in self.imdb_data:
             director_list = []
             imdb_list = self.imdb_data['director'].split(", ")
             for director in imdb_list:
@@ -353,14 +353,14 @@ class AmazonSpider(scrapy.Spider):
 
     def extract_actors(self):
 
-        if self.imdb_data is not None:
+        if self.imdb_data is not None and 'actors' in self.imdb_data:
             return self.imdb_data['actors'].split(", ")
         else:
             return None
 
     def extract_writer(self):
 
-        if self.imdb_data is not None:
+        if self.imdb_data is not None and 'writer' in self.imdb_data:
             writer_list = []
             imdb_list = self.imdb_data['writer'].split(", ")
             for writer in imdb_list:
